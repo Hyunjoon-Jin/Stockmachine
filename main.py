@@ -22,6 +22,7 @@ from pathlib import Path
 
 from src.advisor import generate_briefing, sample_briefing, KST
 from src.config import load_config
+from src.inbox import apply_email_updates
 from src.notify.email_sender import send_email
 from src.notify.kakao_sender import send_kakao
 from src.report import render_html, render_kakao_text
@@ -43,10 +44,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-email", action="store_true", help="이메일 발송 생략")
     parser.add_argument("--no-kakao", action="store_true", help="카카오 발송 생략")
     parser.add_argument("--sample", action="store_true", help="API 호출 없이 샘플 데이터 사용")
+    parser.add_argument("--no-inbox", action="store_true", help="이메일 회신 기반 보유종목 업데이트 생략")
     parser.add_argument("--portfolio", default=None, help="포트폴리오 yaml 경로 지정")
     args = parser.parse_args(argv)
 
     config = load_config(args.portfolio)
+
+    # 1) 이메일 회신 기반 보유종목 업데이트 (브리핑 생성 전에 반영)
+    if not args.sample and not args.no_inbox:
+        print("▶ 이메일 회신 확인(보유종목 업데이트)...")
+        upd = apply_email_updates(config)
+        mark = "✓" if upd["changed"] else "·"
+        print(f"  {mark} {upd['detail']}")
 
     print("▶ 브리핑 생성 중...")
     if args.sample:
