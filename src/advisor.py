@@ -12,9 +12,46 @@ ANTHROPIC_API_KEY 가 없으면 sample_briefing() 으로 데모 데이터를 돌
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Any
+
+# 일시적으로 재시도할 HTTP 상태 (과부하/서버오류/레이트리밋 등)
+_RETRYABLE_STATUS = {408, 409, 429, 500, 502, 503, 504, 529}
+
+
+def _is_retryable(exc) -> bool:
+    """Anthropic API 의 일시적 오류인지 판별."""
+    import anthropic
+
+    if isinstance(exc, (anthropic.APIConnectionError, anthropic.APITimeoutError)):
+        return True
+    if isinstance(exc, anthropic.APIStatusError):
+        if getattr(exc, "status_code", None) in _RETRYABLE_STATUS:
+            return True
+        body = getattr(exc, "body", None)
+        if isinstance(body, dict):
+            etype = (body.get("error") or {}).get("type") or body.get("type")
+            if etype in ("overloaded_error", "api_error", "rate_limit_error"):
+                return True
+    return False
+
+
+def _retry(fn, *, tries: int = 5, base: float = 8.0, label: str = ""):
+    """일시적 오류에 지수 백오프로 재시도."""
+    last = None
+    for i in range(tries):
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            if i == tries - 1 or not _is_retryable(exc):
+                raise
+            delay = base * (2 ** i)
+            print(f"  ⚠ {label} 일시 오류({type(exc).__name__}) → {delay:.0f}s 후 재시도 [{i + 1}/{tries - 1}]")
+            time.sleep(delay)
+    raise last  # pragma: no cover
 
 KST = timezone(timedelta(hours=9))
 
@@ -236,8 +273,7 @@ def _run_research(client, model: str, portfolio: dict[str, Any], date_label: str
     messages = [{"role": "user", "content": _research_prompt(portfolio, date_label)}]
     tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 7}]
 
-    final_message = None
-    for _ in range(6):  # pause_turn 재개 안전장치
+    def _attempt():
         with client.messages.stream(
             model=model,
             max_tokens=8000,
@@ -246,7 +282,11 @@ def _run_research(client, model: str, portfolio: dict[str, Any], date_label: str
             tools=tools,
             messages=messages,
         ) as stream:
-            final_message = stream.get_final_message()
+            return stream.get_final_message()
+
+    final_message = None
+    for _ in range(6):  # pause_turn 재개 안전장치
+        final_message = _retry(_attempt, label="리서치")
 
         if final_message.stop_reason == "pause_turn":
             messages.append({"role": "assistant", "content": final_message.content})
@@ -261,17 +301,20 @@ def _run_research(client, model: str, portfolio: dict[str, Any], date_label: str
 
 def _structure(client, model: str, research_text: str) -> dict[str, Any]:
     """리서치 노트를 BRIEFING_SCHEMA JSON 으로 변환."""
-    resp = client.messages.create(
-        model=model,
-        max_tokens=8000,
-        system=_STRUCTURE_SYSTEM,
-        output_config={"format": {"type": "json_schema", "schema": BRIEFING_SCHEMA}},
-        messages=[
-            {
-                "role": "user",
-                "content": f"다음 리서치 노트를 스키마에 맞게 정리하세요.\n\n=== 리서치 노트 ===\n{research_text}",
-            }
-        ],
+    resp = _retry(
+        lambda: client.messages.create(
+            model=model,
+            max_tokens=8000,
+            system=_STRUCTURE_SYSTEM,
+            output_config={"format": {"type": "json_schema", "schema": BRIEFING_SCHEMA}},
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"다음 리서치 노트를 스키마에 맞게 정리하세요.\n\n=== 리서치 노트 ===\n{research_text}",
+                }
+            ],
+        ),
+        label="구조화",
     )
     text = next((b.text for b in resp.content if getattr(b, "type", "") == "text"), "{}")
     return json.loads(text)
