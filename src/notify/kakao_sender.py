@@ -16,16 +16,17 @@ _TOKEN_URL = "https://kauth.kakao.com/oauth/token"
 _SEND_URL = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
 
 
-def _refresh_access_token(rest_api_key: str, refresh_token: str) -> str | None:
-    resp = requests.post(
-        _TOKEN_URL,
-        data={
-            "grant_type": "refresh_token",
-            "client_id": rest_api_key,
-            "refresh_token": refresh_token,
-        },
-        timeout=20,
-    )
+def _refresh_access_token(
+    rest_api_key: str, refresh_token: str, client_secret: str = ""
+) -> str | None:
+    data = {
+        "grant_type": "refresh_token",
+        "client_id": rest_api_key,
+        "refresh_token": refresh_token,
+    }
+    if client_secret:  # 앱 보안 설정에서 Client Secret 사용 시
+        data["client_secret"] = client_secret
+    resp = requests.post(_TOKEN_URL, data=data, timeout=20)
     resp.raise_for_status()
     return resp.json().get("access_token")
 
@@ -41,7 +42,9 @@ def send_kakao(config, *, text: str, link_url: str = "") -> dict:
 
     link = link_url or kc.link_url or "https://finance.naver.com"
     try:
-        access_token = _refresh_access_token(kc.rest_api_key, kc.refresh_token)
+        access_token = _refresh_access_token(
+            kc.rest_api_key, kc.refresh_token, kc.client_secret
+        )
         if not access_token:
             return {"ok": False, "detail": "카카오 access_token 발급 실패"}
 

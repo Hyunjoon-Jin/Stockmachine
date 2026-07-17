@@ -70,6 +70,7 @@ class ImapConfig:
 class KakaoConfig:
     rest_api_key: str = ""
     refresh_token: str = ""
+    client_secret: str = ""   # 앱 보안 설정에서 Client Secret 사용 시 필요
     link_url: str = ""
 
     @property
@@ -149,6 +150,7 @@ def load_config(portfolio_path: Path | str | None = None) -> AppConfig:
     kakao = KakaoConfig(
         rest_api_key=os.getenv("KAKAO_REST_API_KEY", ""),
         refresh_token=os.getenv("KAKAO_REFRESH_TOKEN", ""),
+        client_secret=os.getenv("KAKAO_CLIENT_SECRET", ""),
         link_url=os.getenv("KAKAO_LINK_URL", ""),
     )
 
