@@ -191,16 +191,18 @@ def _research_prompt(portfolio: dict[str, Any], date_label: str) -> str:
         "'오늘 아침 증시 브리핑' 리서치 노트를 한국어로 작성하세요.\n\n"
         f"{_portfolio_prompt(portfolio)}\n"
         "다음 항목을 반드시 모두 조사·정리하세요:\n"
-        "1) 증시분석: 국내(코스피/코스닥) 전일 마감·오늘 개장 관련 흐름, 미국 등 해외증시 전일 마감, "
-        "환율·금리·유가 등 매크로.\n"
+        "1) 증시분석: 국내(코스피/코스닥) 최근 종가와 등락률, 미국 증시(다우/S&P500/나스닥/필라델피아반도체지수 SOX) "
+        "최근 마감, 원/달러 환율·미 국채 10년물 금리·국제유가(WTI). "
+        "→ 각 지표는 반드시 웹 검색으로 '최신 확인 가능한 수치'와 '그 기준일'을 함께 제시하세요.\n"
         "2) 이슈브리핑: 오늘 시장에 영향을 줄 핵심 뉴스/이슈 3~5개 (각 이슈의 시장 영향 방향 포함).\n"
         "3) 보유종목 가이드: 위 보유종목 각각에 대해 오늘 관점의 지속 매수/보유/비중축소/매도 방향과 근거, "
-        "목표가·손절 관점 코멘트.\n"
+        "목표가·손절 관점 코멘트. (가능하면 현재가/평단 대비 손익도 언급)\n"
         "4) 관심종목 가이드: 위 관심종목 각각에 대해 매수 타이밍/관망 관점과 근거.\n"
         "5) 오늘의 매수추천: 현재 시장 상황에 어울리는 신규 매수 후보 2~3종목 (종목코드, 테마, 근거, "
         "진입 관점, 리스크 포함).\n\n"
-        "가능한 한 수치(지수, 등락률, 종가 등)를 근거로 제시하고, 확인되지 않은 정보는 추정임을 밝히세요. "
-        "투자자의 위험선호·투자기간을 반영해 현실적으로 조언하세요."
+        "중요: '실시간/당일 데이터 미확인'이라며 회피하지 마세요. 정확한 당일 값이 없으면 검색으로 얻은 "
+        "'가장 최근 확인된 수치'와 그 날짜를 명시해 제시하고, 그 위에서 실질적인 조언을 하세요. "
+        "구체적 종목명·수치·방향을 담아 투자자의 위험선호·투자기간에 맞춰 현실적으로 조언하세요."
     )
 
 
@@ -232,7 +234,7 @@ def _extract_sources(final_message) -> list[dict[str, str]]:
 def _run_research(client, model: str, portfolio: dict[str, Any], date_label: str):
     """웹 검색 에이전틱 루프를 돌려 리서치 노트(text)와 출처를 반환."""
     messages = [{"role": "user", "content": _research_prompt(portfolio, date_label)}]
-    tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 8}]
+    tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 7}]
 
     final_message = None
     for _ in range(6):  # pause_turn 재개 안전장치
@@ -285,7 +287,8 @@ def generate_briefing(config) -> Briefing:
 
     import anthropic
 
-    client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+    # 웹검색+고효율 리서치는 수 분이 걸릴 수 있으므로 넉넉한 타임아웃 설정
+    client = anthropic.Anthropic(api_key=config.anthropic_api_key, timeout=900.0)
     model = config.advisor_model
 
     research_text, sources = _run_research(client, model, config.portfolio, date_label)
