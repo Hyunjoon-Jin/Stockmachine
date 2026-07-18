@@ -130,10 +130,17 @@ BRIEFING_SCHEMA: dict[str, Any] = {
                     "code": {"type": "string"},
                     "theme": {"type": "string"},
                     "rationale": {"type": "string"},
-                    "entry_note": {"type": "string"},
+                    "buy_zone": {"type": "string"},        # 매수 적정 가격대 (예: 24,000~24,500원)
+                    "buy_plan": {"type": "string"},        # 매수 방법·비중 (예: 3회 분할, 회당 목표비중 1/3)
+                    "target_price": {"type": "string"},    # 목표가 (예: 1차 27,000 / 2차 30,000)
+                    "holding_period": {"type": "string"},  # 보유 기간 (예: 중기 2~3개월)
+                    "stop_loss": {"type": "string"},       # 손절 기준 (예: 22,800원 이탈 시)
                     "risk": {"type": "string"},
                 },
-                "required": ["name", "code", "theme", "rationale", "entry_note", "risk"],
+                "required": [
+                    "name", "code", "theme", "rationale", "buy_zone", "buy_plan",
+                    "target_price", "holding_period", "stop_loss", "risk",
+                ],
             },
         },
         "disclaimer": {"type": "string"},
@@ -235,8 +242,15 @@ def _research_prompt(portfolio: dict[str, Any], date_label: str) -> str:
         "3) 보유종목 가이드: 위 보유종목 각각에 대해 오늘 관점의 지속 매수/보유/비중축소/매도 방향과 근거, "
         "목표가·손절 관점 코멘트. (가능하면 현재가/평단 대비 손익도 언급)\n"
         "4) 관심종목 가이드: 위 관심종목 각각에 대해 매수 타이밍/관망 관점과 근거.\n"
-        "5) 오늘의 매수추천: 현재 시장 상황에 어울리는 신규 매수 후보 2~3종목 (종목코드, 테마, 근거, "
-        "진입 관점, 리스크 포함).\n\n"
+        "5) 오늘의 매수추천: 현재 시장 상황에 어울리는 신규 매수 후보 2~3종목. 각 종목마다 반드시 아래를 "
+        "구체적 수치로 제시하세요:\n"
+        "   - 매수 적정 가격대(현재가 기준 어느 가격/구간에서 매수가 유리한지, 예: 24,000~24,500원)\n"
+        "   - 매수 방법·비중(분할 횟수와 회당 비중, 예: 3회 분할·회당 목표비중 1/3)\n"
+        "   - 목표가(1차/2차 등 단계별, 상승 여력 %)\n"
+        "   - 보유 기간(단기/중기/장기와 대략 기간, 청산 조건 예: 목표가 도달 또는 다음 실적발표 전)\n"
+        "   - 손절 기준(가격/조건)\n"
+        "   - 핵심 리스크\n"
+        "   (현재가·지지/저항 등은 검색으로 확인하고, 추정이면 추정임을 밝히되 '미확인'으로 회피하지 말 것)\n\n"
         "중요: '실시간/당일 데이터 미확인'이라며 회피하지 마세요. 정확한 당일 값이 없으면 검색으로 얻은 "
         "'가장 최근 확인된 수치'와 그 날짜를 명시해 제시하고, 그 위에서 실질적인 조언을 하세요. "
         "구체적 종목명·수치·방향을 담아 투자자의 위험선호·투자기간에 맞춰 현실적으로 조언하세요."
@@ -364,7 +378,16 @@ def sample_briefing(date_label: str | None = None) -> Briefing:
             {"name": "현대차", "code": "005380", "action": "매수", "rationale": "밸류업·배당 매력, 저평가 구간. (샘플)", "target_note": "24만원 지지 시 분할 매수"},
         ],
         recommendations=[
-            {"name": "한미반도체", "code": "042700", "theme": "HBM/반도체 장비", "rationale": "HBM 투자 확대 수혜. (샘플)", "entry_note": "조정 시 분할 진입", "risk": "반도체 업황 변동성"},
+            {
+                "name": "한미반도체", "code": "042700", "theme": "HBM/반도체 장비",
+                "rationale": "HBM 투자 확대 수혜, 조정 시 분할 매수 유효. (샘플)",
+                "buy_zone": "115,000~120,000원 구간 분할",
+                "buy_plan": "3회 분할, 회당 목표비중 1/3 (총 계획비중의 30%)",
+                "target_price": "1차 135,000원(+13%) / 2차 150,000원(+25%)",
+                "holding_period": "중기 2~3개월, 목표가 도달 또는 실적발표 전까지",
+                "stop_loss": "108,000원 이탈 시 손절",
+                "risk": "반도체 업황·HBM 수요 둔화, 고밸류 변동성",
+            },
         ],
         generated_at=datetime.now(KST).strftime("%Y-%m-%d %H:%M KST"),
         sources=[],

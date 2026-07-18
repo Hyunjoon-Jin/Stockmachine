@@ -104,14 +104,30 @@ def _stock_row(item: dict, *, kind: str, first: bool) -> str:
             f'{name}{code_html}</div>'
             + (f'<div style="margin-top:7px;">{_badge(theme, C_BRAND)}</div>' if theme else "")
         )
+        specs = [
+            ("💰 매수가", item.get("buy_zone", ""), C_BRAND_DK, False),
+            ("📊 매수방법", item.get("buy_plan", ""), C_BRAND_DK, False),
+            ("🎯 목표가", item.get("target_price", ""), "#0f9d58", True),
+            ("⏳ 보유기간", item.get("holding_period", ""), C_BRAND_DK, False),
+            ("🛑 손절", item.get("stop_loss", ""), "#d93a3a", False),
+            ("⚠️ 리스크", item.get("risk", ""), "#d93a3a", False),
+        ]
+        rows = "".join(
+            f'<tr>'
+            f'<td style="width:88px;vertical-align:top;padding:5px 10px 5px 0;font-size:12.5px;'
+            f'font-weight:800;color:{lbl_color};white-space:nowrap;letter-spacing:-.01em;">{lbl}</td>'
+            f'<td style="vertical-align:top;padding:5px 0;font-size:13.5px;line-height:1.6;'
+            f'color:{C_INK if strong else C_BODY};font-weight:{700 if strong else 500};'
+            f'letter-spacing:-.01em;">{escape(val)}</td>'
+            f'</tr>'
+            for lbl, val, lbl_color, strong in specs if val
+        )
         body = (
             f'<div style="margin-top:10px;">{_p(item.get("rationale",""))}</div>'
-            f'<div style="margin-top:8px;font-size:13.5px;line-height:1.7;color:{C_SUB};'
-            f'letter-spacing:-.01em;"><b style="color:{C_BRAND_DK};">진입</b>&nbsp;'
-            f'{escape(item.get("entry_note",""))}</div>'
-            f'<div style="margin-top:3px;font-size:13.5px;line-height:1.7;color:{C_SUB};'
-            f'letter-spacing:-.01em;"><b style="color:#d93a3a;">리스크</b>&nbsp;'
-            f'{escape(item.get("risk",""))}</div>'
+            f'<table role="presentation" width="100%" style="margin-top:12px;background:#f8f9fc;'
+            f'border:1px solid {C_LINE};border-radius:12px;border-collapse:separate;">'
+            f'<tr><td style="padding:8px 14px;"><table role="presentation" width="100%">{rows}</table></td></tr>'
+            f'</table>'
         )
     else:
         action = item.get("action", "")
@@ -297,3 +313,39 @@ def render_kakao_text(b: Briefing, *, max_len: int = 1000) -> str:
     if len(text) > max_len:
         text = text[: max_len - 1].rstrip() + "…"
     return text
+
+
+def render_kakao_feed(b: Briefing, *, link_url: str = "") -> dict:
+    """카카오 '나에게 보내기' 카드형 피드(feed) 템플릿 오브젝트 생성.
+
+    카드: 제목(날짜) · 설명(헤드라인) · 항목 리스트(이슈/보유/추천) · 버튼.
+    """
+    link = link_url or "https://finance.naver.com/sise/"
+    link_obj = {"web_url": link, "mobile_web_url": link}
+
+    items: list[dict] = []
+    if b.issue_briefing:
+        top = b.issue_briefing[0]
+        mark = {"긍정": "🔺", "부정": "🔻", "중립": "▪"}.get(top.get("impact", "중립"), "▪")
+        items.append({"item": "핵심이슈", "item_op": f"{mark} " + _clip(top.get("title", ""), 18)})
+    if b.holdings_guide:
+        names = " · ".join(
+            f"{h.get('name','')}({h.get('action','')})" for h in b.holdings_guide[:2]
+        )
+        items.append({"item": "보유", "item_op": _clip(names, 20)})
+    if b.recommendations:
+        names = " · ".join(r.get("name", "") for r in b.recommendations[:3])
+        items.append({"item": "매수추천", "item_op": _clip(names, 20)})
+
+    template: dict = {
+        "object_type": "feed",
+        "content": {
+            "title": f"📊 AI 투자비서 · {b.date_label}",
+            "description": _clip(b.headline, 110),
+            "link": link_obj,
+        },
+        "buttons": [{"title": "오늘의 증시 보기", "link": link_obj}],
+    }
+    if items:
+        template["item_content"] = {"title_image_text": "오늘의 브리핑", "items": items}
+    return template
