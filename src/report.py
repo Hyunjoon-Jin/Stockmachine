@@ -248,39 +248,51 @@ def render_html(b: Briefing) -> str:
 </body></html>"""
 
 
-def render_kakao_text(b: Briefing, *, max_len: int = 900) -> str:
-    """카카오 '나에게 보내기' 용 텍스트 요약(플레인 텍스트)."""
-    lines: list[str] = []
-    lines.append(f"📊 AI 투자비서 · {b.date_label}")
-    lines.append(b.headline)
-    lines.append("")
+def _clip(text: str, n: int) -> str:
+    text = " ".join((text or "").split())
+    return text if len(text) <= n else text[: n - 1].rstrip() + "…"
 
-    ma = b.market_analysis or {}
-    if ma.get("domestic"):
-        lines.append(f"📈 국내: {ma['domestic']}")
-    if ma.get("overseas"):
-        lines.append(f"🌎 해외: {ma['overseas']}")
+
+def render_kakao_text(b: Briefing, *, max_len: int = 1000) -> str:
+    """카카오 '나에게 보내기' 용 요약 — 짧고 스캔하기 쉬운 다이제스트.
+
+    긴 증시분석 본문은 넣지 않고(그건 메일 리포트에), 헤드라인 + 핵심 불릿만.
+    """
+    RULE = "━━━━━━━━━━━━━"
+    lines: list[str] = []
+    lines.append(f"📊 AI 투자비서")
+    lines.append(f"🗓 {b.date_label}")
     lines.append("")
+    lines.append(f"💡 {_clip(b.headline, 90)}")
 
     if b.issue_briefing:
+        lines.append("")
+        lines.append(RULE)
         lines.append("📰 오늘의 이슈")
         for it in b.issue_briefing[:3]:
-            lines.append(f" • [{it.get('impact','중립')}] {it.get('title','')}")
-        lines.append("")
+            mark = {"긍정": "🔺", "부정": "🔻", "중립": "▪"}.get(it.get("impact", "중립"), "▪")
+            lines.append(f"{mark} {_clip(it.get('title',''), 40)}")
 
     if b.holdings_guide:
-        lines.append("💼 보유종목")
-        for it in b.holdings_guide:
-            lines.append(f" • {it.get('name','')} → {it.get('action','')}")
         lines.append("")
+        lines.append(RULE)
+        lines.append("💼 보유종목 가이드")
+        for it in b.holdings_guide:
+            lines.append(f"· {it.get('name','')} → {it.get('action','')}")
 
     if b.recommendations:
-        lines.append("🎯 오늘의 추천")
-        for it in b.recommendations:
-            lines.append(f" • {it.get('name','')}({it.get('code','')}) - {it.get('theme','')}")
         lines.append("")
+        lines.append(RULE)
+        lines.append("🎯 오늘의 매수추천")
+        for it in b.recommendations:
+            theme = it.get("theme", "")
+            tail = f" · {_clip(theme, 18)}" if theme else ""
+            lines.append(f"· {it.get('name','')}({it.get('code','')}){tail}")
 
-    lines.append("자세한 내용은 메일 리포트를 확인하세요.")
+    lines.append("")
+    lines.append(RULE)
+    lines.append("📧 상세 리포트는 메일을 확인하세요")
+
     text = "\n".join(lines).strip()
     if len(text) > max_len:
         text = text[: max_len - 1].rstrip() + "…"
