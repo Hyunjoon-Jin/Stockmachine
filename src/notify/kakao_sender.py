@@ -31,9 +31,11 @@ def _refresh_access_token(
     return resp.json().get("access_token")
 
 
-def send_kakao(config, *, text: str, link_url: str = "") -> dict:
-    """카카오 '나에게 보내기' 텍스트 메시지를 발송한다.
+def send_kakao(config, *, template: dict | None = None, text: str = "", link_url: str = "") -> dict:
+    """카카오 '나에게 보내기' 메시지를 발송한다.
 
+    template 이 주어지면 그 템플릿(예: feed 카드)을 그대로 전송하고,
+    없으면 text 로 기본 text 템플릿을 구성한다.
     반환: {"ok": bool, "detail": str}
     """
     kc = config.kakao
@@ -48,20 +50,36 @@ def send_kakao(config, *, text: str, link_url: str = "") -> dict:
         if not access_token:
             return {"ok": False, "detail": "카카오 access_token 발급 실패"}
 
-        template = {
+        text_template = {
             "object_type": "text",
-            "text": text,
+            "text": text or "AI 투자비서 아침 브리핑이 도착했습니다. 메일을 확인하세요.",
             "link": {"web_url": link, "mobile_web_url": link},
             "button_title": "자세히 보기",
         }
-        resp = requests.post(
-            _SEND_URL,
-            headers={"Authorization": f"Bearer {access_token}"},
-            data={"template_object": json.dumps(template, ensure_ascii=False)},
-            timeout=20,
-        )
+        primary = template if template is not None else text_template
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        def _post(tpl: dict):
+            return requests.post(
+                _SEND_URL,
+                headers=headers,
+                data={"template_object": json.dumps(tpl, ensure_ascii=False)},
+                timeout=20,
+            )
+
+        resp = _post(primary)
         if resp.status_code == 200:
             return {"ok": True, "detail": "카카오톡 발송 완료 (나에게 보내기)"}
+
+        # 피드 등 커스텀 템플릿 실패 시 텍스트로 폴백
+        if template is not None:
+            resp2 = _post(text_template)
+            if resp2.status_code == 200:
+                return {"ok": True, "detail": "카카오톡 발송 완료 (피드 실패 → 텍스트 폴백)"}
+            return {
+                "ok": False,
+                "detail": f"카카오 발송 실패: 피드 {resp.status_code} {resp.text} / 텍스트 {resp2.status_code} {resp2.text}",
+            }
         return {"ok": False, "detail": f"카카오 발송 실패: {resp.status_code} {resp.text}"}
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "detail": f"카카오 발송 실패: {exc}"}

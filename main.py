@@ -25,7 +25,7 @@ from src.config import load_config
 from src.inbox import apply_email_updates
 from src.notify.email_sender import send_email
 from src.notify.kakao_sender import send_kakao
-from src.report import render_html, render_kakao_text
+from src.report import render_html, render_kakao_text, render_kakao_feed
 
 OUT_DIR = Path(__file__).resolve().parent / "out"
 
@@ -87,7 +87,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.no_kakao:
         print("▶ 카카오톡 발송 중...")
-        results.append(("카카오", send_kakao(config, text=kakao_text)))
+        kakao_feed = render_kakao_feed(briefing, link_url=config.kakao.link_url)
+        results.append(("카카오", send_kakao(config, template=kakao_feed, text=kakao_text)))
 
     print("\n── 발송 결과 ──")
     ok_any = False
