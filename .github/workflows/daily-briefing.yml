@@ -11,7 +11,7 @@ on:
 jobs:
   briefing:
     runs-on: ubuntu-latest
-    timeout-minutes: 20        # 웹검색 리서치(effort:high)는 수 분 소요
+    timeout-minutes: 35        # 웹검색 리서치(effort:high)+상세추천+재시도 여유
     permissions:
       contents: write        # 회신 기반 portfolio.yaml 변경사항 커밋용
     steps:
