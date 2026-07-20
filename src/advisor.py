@@ -231,8 +231,14 @@ def _portfolio_prompt(portfolio: dict[str, Any]) -> str:
 def _research_prompt(portfolio: dict[str, Any], date_label: str) -> str:
     return (
         f"당신은 한국 주식시장 전문 애널리스트입니다. 오늘은 {date_label} 입니다.\n"
-        "웹 검색을 활용해 최신(가급적 24시간 이내) 정보를 수집한 뒤, 아래 투자자를 위한 "
+        "웹 검색을 활용해 최신 정보를 수집한 뒤, 아래 투자자를 위한 "
         "'오늘 아침 증시 브리핑' 리서치 노트를 한국어로 작성하세요.\n\n"
+        "◆ 데이터 최신성 규칙(매우 중요):\n"
+        " - 반드시 '가장 최근 거래일'의 종가·수치를 웹 검색으로 확보하세요. 오늘이 주말/휴장이면 직전 거래일 기준입니다.\n"
+        " - 검색은 지수·환율·금리부터(코스피, 코스닥, S&P500/나스닥/다우, SOX, 원/달러, 미10년물, WTI) "
+        "우선 확보하고, 그다음 보유·추천 종목 현재가를 확인하세요.\n"
+        " - 검색 결과의 날짜(page_age/기사일자)를 확인해 '수 일 지난 값'을 최신값처럼 쓰지 마세요. "
+        "가능한 한 검색 예산을 아껴 핵심 지표부터 최신값을 확보하세요.\n\n"
         f"{_portfolio_prompt(portfolio)}\n"
         "다음 항목을 반드시 모두 조사·정리하세요:\n"
         "1) 증시분석: 국내(코스피/코스닥) 최근 종가와 등락률, 미국 증시(다우/S&P500/나스닥/필라델피아반도체지수 SOX) "
@@ -286,8 +292,8 @@ _STRUCTURE_SYSTEM = (
 def _run_research(client, model: str, portfolio: dict[str, Any], date_label: str):
     """웹 검색으로 리서치 노트(text)와 출처를 생성. (품질 위해 effort=high 유지)"""
     messages = [{"role": "user", "content": _research_prompt(portfolio, date_label)}]
-    # 검색 횟수를 5회로 제한해 시간 단축
-    tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 5}]
+    # 최신 데이터 확보가 최우선 → 검색 한도를 충분히 부여(부족하면 옛 수치로 폴백됨)
+    tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 12}]
 
     def _attempt():
         with client.messages.stream(
