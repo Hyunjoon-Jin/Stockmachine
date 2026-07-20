@@ -257,14 +257,6 @@ def _research_prompt(portfolio: dict[str, Any], date_label: str) -> str:
     )
 
 
-_STRUCTURE_SYSTEM = (
-    "너는 애널리스트 리서치 노트를 정해진 JSON 스키마로 정리하는 변환기다. "
-    "제공된 리서치 노트의 내용에만 근거해 각 필드를 한국어로 채운다. "
-    "보유종목/관심종목 가이드는 리서치 노트에서 언급된 모든 종목을 포함한다. "
-    "새로운 사실을 지어내지 말고, 노트에 없으면 합리적으로 요약한다."
-)
-
-
 def _extract_sources(final_message) -> list[dict[str, str]]:
     """web_search_tool_result 블록에서 참고 출처(제목/URL)를 추출."""
     sources: list[dict[str, str]] = []
@@ -282,10 +274,20 @@ def _extract_sources(final_message) -> list[dict[str, str]]:
     return sources[:12]
 
 
+_STRUCTURE_SYSTEM = (
+    "너는 애널리스트 리서치 노트를 정해진 JSON 스키마로 정리하는 변환기다. "
+    "제공된 리서치 노트의 내용에 근거해 각 필드를 한국어로 충실히 채운다. "
+    "보유종목/관심종목 가이드는 리서치 노트에서 언급된 모든 종목을 포함하고, "
+    "매수추천은 매수가·매수방법·목표가·보유기간·손절 필드를 노트 내용대로 채운다. "
+    "새로운 사실을 지어내지 말고, 노트에 없으면 합리적으로 요약한다."
+)
+
+
 def _run_research(client, model: str, portfolio: dict[str, Any], date_label: str):
-    """웹 검색 에이전틱 루프를 돌려 리서치 노트(text)와 출처를 반환."""
+    """웹 검색으로 리서치 노트(text)와 출처를 생성. (품질 위해 effort=high 유지)"""
     messages = [{"role": "user", "content": _research_prompt(portfolio, date_label)}]
-    tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 7}]
+    # 검색 횟수를 5회로 제한해 시간 단축
+    tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 5}]
 
     def _attempt():
         with client.messages.stream(
@@ -301,7 +303,6 @@ def _run_research(client, model: str, portfolio: dict[str, Any], date_label: str
     final_message = None
     for _ in range(6):  # pause_turn 재개 안전장치
         final_message = _retry(_attempt, label="리서치")
-
         if final_message.stop_reason == "pause_turn":
             messages.append({"role": "assistant", "content": final_message.content})
             continue
@@ -314,13 +315,16 @@ def _run_research(client, model: str, portfolio: dict[str, Any], date_label: str
 
 
 def _structure(client, model: str, research_text: str) -> dict[str, Any]:
-    """리서치 노트를 BRIEFING_SCHEMA JSON 으로 변환."""
+    """리서치 노트를 BRIEFING_SCHEMA JSON 으로 변환. (단순 정리이므로 effort=low 로 시간 절약)"""
     resp = _retry(
         lambda: client.messages.create(
             model=model,
             max_tokens=8000,
             system=_STRUCTURE_SYSTEM,
-            output_config={"format": {"type": "json_schema", "schema": BRIEFING_SCHEMA}},
+            output_config={
+                "effort": "low",
+                "format": {"type": "json_schema", "schema": BRIEFING_SCHEMA},
+            },
             messages=[
                 {
                     "role": "user",
