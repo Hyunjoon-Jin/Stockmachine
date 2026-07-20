@@ -37,19 +37,19 @@ def _badge(text: str, color: str) -> str:
     return (
         f'<span style="display:inline-block;padding:3px 11px;border-radius:999px;'
         f'background:{color}18;color:{color};font-size:12px;font-weight:800;'
-        f'letter-spacing:-.01em;white-space:nowrap;line-height:1.4;">{escape(text)}</span>'
+        f'white-space:nowrap;line-height:1.4;">{escape(text)}</span>'
     )
 
 
 def _section(emoji: str, title: str, subtitle: str = "") -> str:
     sub = (
         f'<div style="font-size:12.5px;color:{C_SUB};margin-top:3px;'
-        f'letter-spacing:-.01em;">{escape(subtitle)}</div>' if subtitle else ""
+        f'">{escape(subtitle)}</div>' if subtitle else ""
     )
     return (
         f'<tr><td style="padding:30px 26px 10px 26px;">'
         f'<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
-        f'<td style="font-size:19px;font-weight:800;color:{C_INK};letter-spacing:-.02em;">'
+        f'<td style="font-size:19px;font-weight:800;color:{C_INK};">'
         f'{emoji}&nbsp;&nbsp;{escape(title)}</td></tr></table>'
         f'{sub}</td></tr>'
     )
@@ -72,7 +72,7 @@ def _p(text: str) -> str:
     """본문 문단 — 넉넉한 행간·자간으로 가독성 확보."""
     return (
         f'<span style="font-size:15px;line-height:1.85;color:{C_BODY};'
-        f'letter-spacing:-.011em;">{escape(text)}</span>'
+        f'">{escape(text)}</span>'
     )
 
 
@@ -100,7 +100,7 @@ def _stock_row(item: dict, *, kind: str, first: bool) -> str:
     if kind == "reco":
         theme = escape(item.get("theme", ""))
         head = (
-            f'<div style="font-size:16px;font-weight:800;color:{C_INK};letter-spacing:-.02em;">'
+            f'<div style="font-size:16px;font-weight:800;color:{C_INK};">'
             f'{name}{code_html}</div>'
             + (f'<div style="margin-top:7px;">{_badge(theme, C_BRAND)}</div>' if theme else "")
         )
@@ -115,10 +115,10 @@ def _stock_row(item: dict, *, kind: str, first: bool) -> str:
         rows = "".join(
             f'<tr>'
             f'<td style="width:88px;vertical-align:top;padding:5px 10px 5px 0;font-size:12.5px;'
-            f'font-weight:800;color:{lbl_color};white-space:nowrap;letter-spacing:-.01em;">{lbl}</td>'
+            f'font-weight:800;color:{lbl_color};white-space:nowrap;">{lbl}</td>'
             f'<td style="vertical-align:top;padding:5px 0;font-size:13.5px;line-height:1.6;'
             f'color:{C_INK if strong else C_BODY};font-weight:{700 if strong else 500};'
-            f'letter-spacing:-.01em;">{escape(val)}</td>'
+            f'">{escape(val)}</td>'
             f'</tr>'
             for lbl, val, lbl_color, strong in specs if val
         )
@@ -134,7 +134,7 @@ def _stock_row(item: dict, *, kind: str, first: bool) -> str:
         color = _ACTION_COLOR.get(action, C_SUB)
         head = (
             f'<table role="presentation" width="100%"><tr>'
-            f'<td style="font-size:16px;font-weight:800;color:{C_INK};letter-spacing:-.02em;'
+            f'<td style="font-size:16px;font-weight:800;color:{C_INK};'
             f'vertical-align:middle;">{name}{code_html}</td>'
             f'<td align="right" style="vertical-align:middle;">{_badge(action, color)}</td>'
             f'</tr></table>'
@@ -142,7 +142,7 @@ def _stock_row(item: dict, *, kind: str, first: bool) -> str:
         body = (
             f'<div style="margin-top:10px;">{_p(item.get("rationale",""))}</div>'
             f'<div style="margin-top:8px;font-size:13.5px;line-height:1.7;color:{C_SUB};'
-            f'letter-spacing:-.01em;"><b style="color:{C_BRAND_DK};">전략</b>&nbsp;'
+            f'"><b style="color:{C_BRAND_DK};">전략</b>&nbsp;'
             f'{escape(item.get("target_note",""))}</div>'
         )
 
@@ -168,11 +168,11 @@ def render_html(b: Briefing) -> str:
                 f'<div style="{border}padding:{"4px" if i == 0 else "16px"} 0 16px 0;">'
                 f'<table role="presentation" width="100%"><tr>'
                 f'<td style="font-size:15px;font-weight:800;color:{C_INK};'
-                f'letter-spacing:-.02em;vertical-align:middle;">{escape(it.get("title",""))}</td>'
+                f'vertical-align:middle;">{escape(it.get("title",""))}</td>'
                 f'<td align="right" style="vertical-align:middle;">{_badge(it.get("impact","중립"), color)}</td>'
                 f'</tr></table>'
                 f'<div style="margin-top:8px;font-size:14px;line-height:1.75;color:{C_SUB};'
-                f'letter-spacing:-.01em;">{escape(it.get("detail",""))}</div>'
+                f'">{escape(it.get("detail",""))}</div>'
                 f"</div>"
             )
         issues_html = "".join(parts)
@@ -184,7 +184,7 @@ def render_html(b: Briefing) -> str:
     if b.sources:
         links = "".join(
             f'<a href="{escape(s.get("url",""))}" style="color:{C_BRAND};text-decoration:none;'
-            f'font-size:13px;line-height:1.7;display:block;letter-spacing:-.01em;'
+            f'font-size:13px;line-height:1.7;display:block;'
             f'padding:2px 0;">· {escape((s.get("title") or s.get("url",""))[:64])}</a>'
             for s in b.sources
         )
@@ -210,12 +210,12 @@ def render_html(b: Briefing) -> str:
   <tr><td style="padding:2px 14px 20px 14px;">
     <table role="presentation" width="100%" style="background:#1c2b64;border-radius:22px;">
       <tr><td style="padding:30px 28px;">
-        <div style="font-size:12.5px;color:#9db4ff;font-weight:800;letter-spacing:.14em;text-transform:uppercase;">
+        <div style="font-size:12.5px;color:#9db4ff;font-weight:800;letter-spacing:.04em;text-transform:uppercase;">
           AI 투자비서 · 아침 브리핑</div>
-        <div style="font-size:25px;color:#ffffff;font-weight:800;margin-top:8px;letter-spacing:-.02em;">
+        <div style="font-size:25px;color:#ffffff;font-weight:800;margin-top:8px;">
           {escape(b.date_label)}</div>
         <div style="height:1px;background:rgba(255,255,255,.14);margin:18px 0;"></div>
-        <div style="font-size:15.5px;color:#e7ecff;line-height:1.65;letter-spacing:-.011em;font-weight:600;">
+        <div style="font-size:15.5px;color:#e7ecff;line-height:1.65;font-weight:600;">
           {escape(b.headline)}</div>
       </td></tr>
     </table>
@@ -250,12 +250,12 @@ def render_html(b: Briefing) -> str:
   <!-- Disclaimer / Footer -->
   <tr><td style="padding:26px 14px 10px 14px;">
     <div style="font-size:11.5px;line-height:1.7;color:{C_SUB};background:#f6f7fb;
-      border:1px solid {C_LINE};border-radius:14px;padding:15px 17px;letter-spacing:-.005em;">
+      border:1px solid {C_LINE};border-radius:14px;padding:15px 17px;">
       ⚠️ {escape(b.disclaimer)}
     </div>
   </td></tr>
   <tr><td style="padding:8px 14px 30px 14px;text-align:center;">
-    <div style="font-size:11.5px;color:{C_SUB};letter-spacing:-.005em;">
+    <div style="font-size:11.5px;color:{C_SUB};">
       생성 {escape(b.generated_at)} · Stockmachine AI 투자비서</div>
   </td></tr>
 
