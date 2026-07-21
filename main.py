@@ -87,8 +87,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.no_kakao:
         print("▶ 카카오톡 발송 중...")
-        kakao_feed = render_kakao_feed(briefing, link_url=config.kakao.link_url)
-        results.append(("카카오", send_kakao(config, template=kakao_feed, text=kakao_text)))
+        # 카드형은 항목 글자수 제한으로 정보가 빈약 → 구조화 텍스트 다이제스트 사용
+        results.append(("카카오", send_kakao(config, text=kakao_text, link_url=config.kakao.link_url)))
 
     print("\n── 발송 결과 ──")
     ok_any = False
