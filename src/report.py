@@ -269,47 +269,72 @@ def _clip(text: str, n: int) -> str:
     return text if len(text) <= n else text[: n - 1].rstrip() + "…"
 
 
-def render_kakao_text(b: Briefing, *, max_len: int = 1000) -> str:
-    """카카오 '나에게 보내기' 용 요약 — 짧고 스캔하기 쉬운 다이제스트.
-
-    긴 증시분석 본문은 넣지 않고(그건 메일 리포트에), 헤드라인 + 핵심 불릿만.
+def render_kakao_text(b: Briefing, *, max_len: int = 1900) -> str:
+    """카카오 '나에게 보내기' 용 다이제스트 — 짧은 줄+구분선으로 읽기 쉽게,
+    그러면서도 시장요약·이슈·보유전략·추천 핵심수치까지 담아 알맹이 있게.
     """
-    RULE = "━━━━━━━━━━━━━"
-    lines: list[str] = []
-    lines.append(f"📊 AI 투자비서")
-    lines.append(f"🗓 {b.date_label}")
-    lines.append("")
-    lines.append(f"💡 {_clip(b.headline, 90)}")
+    RULE = "━━━━━━━━━━━━━━━"
+    L: list[str] = []
+    L.append("📊 AI 투자비서 아침 브리핑")
+    L.append(f"🗓 {b.date_label}")
+    L.append("")
+    L.append(f"💡 {_clip(b.headline, 100)}")
+
+    ma = b.market_analysis or {}
+    if ma.get("domestic") or ma.get("overseas"):
+        L.append("")
+        L.append(RULE)
+        L.append("📈 시장 요약")
+        if ma.get("domestic"):
+            L.append(f"· 국내 {_clip(ma['domestic'], 70)}")
+        if ma.get("overseas"):
+            L.append(f"· 해외 {_clip(ma['overseas'], 70)}")
 
     if b.issue_briefing:
-        lines.append("")
-        lines.append(RULE)
-        lines.append("📰 오늘의 이슈")
-        for it in b.issue_briefing[:3]:
+        L.append("")
+        L.append(RULE)
+        L.append("📰 오늘의 이슈")
+        for it in b.issue_briefing[:4]:
             mark = {"긍정": "🔺", "부정": "🔻", "중립": "▪"}.get(it.get("impact", "중립"), "▪")
-            lines.append(f"{mark} {_clip(it.get('title',''), 40)}")
+            L.append(f"{mark} {_clip(it.get('title',''), 45)}")
 
     if b.holdings_guide:
-        lines.append("")
-        lines.append(RULE)
-        lines.append("💼 보유종목 가이드")
+        L.append("")
+        L.append(RULE)
+        L.append("💼 보유종목 가이드")
         for it in b.holdings_guide:
-            lines.append(f"· {it.get('name','')} → {it.get('action','')}")
+            note = it.get("target_note", "")
+            tail = f"\n   {_clip(note, 55)}" if note else ""
+            L.append(f"· {it.get('name','')} → {it.get('action','')}{tail}")
+
+    if b.watchlist_guide:
+        L.append("")
+        L.append(RULE)
+        L.append("⭐ 관심종목")
+        for it in b.watchlist_guide[:4]:
+            L.append(f"· {it.get('name','')} → {it.get('action','')}")
 
     if b.recommendations:
-        lines.append("")
-        lines.append(RULE)
-        lines.append("🎯 오늘의 매수추천")
+        L.append("")
+        L.append(RULE)
+        L.append("🎯 오늘의 매수추천")
         for it in b.recommendations:
             theme = it.get("theme", "")
-            tail = f" · {_clip(theme, 18)}" if theme else ""
-            lines.append(f"· {it.get('name','')}({it.get('code','')}){tail}")
+            L.append(f"▸ {it.get('name','')}({it.get('code','')})" + (f" · {_clip(theme, 20)}" if theme else ""))
+            if it.get("buy_zone"):
+                L.append(f"   💰 매수 {_clip(it['buy_zone'], 40)}")
+            if it.get("target_price"):
+                L.append(f"   🎯 목표 {_clip(it['target_price'], 40)}")
+            if it.get("holding_period"):
+                L.append(f"   ⏳ 보유 {_clip(it['holding_period'], 40)}")
+            if it.get("stop_loss"):
+                L.append(f"   🛑 손절 {_clip(it['stop_loss'], 40)}")
 
-    lines.append("")
-    lines.append(RULE)
-    lines.append("📧 상세 리포트는 메일을 확인하세요")
+    L.append("")
+    L.append(RULE)
+    L.append("📧 상세 분석·근거는 메일 리포트 확인")
 
-    text = "\n".join(lines).strip()
+    text = "\n".join(L).strip()
     if len(text) > max_len:
         text = text[: max_len - 1].rstrip() + "…"
     return text
