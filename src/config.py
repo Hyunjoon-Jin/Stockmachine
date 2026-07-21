@@ -19,7 +19,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PORTFOLIO_PATH = ROOT / "config" / "portfolio.yaml"
 
 # 기본 수신자 (MAIL_TO 환경변수 미설정 시 사용)
-DEFAULT_MAIL_TO = ["hj.jin@kt.com", "jhj980912@naver.com"]
+# ghj3806@gmail.com 은 발신 계정이자 확실한 수신 백업(자기 계정은 스팸 미분류)
+DEFAULT_MAIL_TO = ["hj.jin@kt.com", "jhj980912@naver.com", "ghj3806@gmail.com"]
 
 # SMTP 호스트 → IMAP 호스트 추정 (IMAP_HOST 미지정 시)
 _IMAP_HOST_GUESS = {
