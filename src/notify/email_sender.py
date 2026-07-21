@@ -4,7 +4,7 @@ from __future__ import annotations
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import formataddr
+from email.utils import formataddr, formatdate, make_msgid
 
 
 def send_email(config, *, subject: str, html_body: str, text_body: str = "") -> dict:
@@ -20,6 +20,11 @@ def send_email(config, *, subject: str, html_body: str, text_body: str = "") -> 
     msg["Subject"] = subject
     msg["From"] = formataddr((ec.from_name, ec.user))
     msg["To"] = ", ".join(ec.to)
+    # 스팸 점수를 낮추기 위한 표준 헤더 (Date/Message-ID/Reply-To)
+    msg["Reply-To"] = ec.user
+    msg["Date"] = formatdate(localtime=True)
+    domain = ec.user.split("@")[-1] if "@" in ec.user else "localhost"
+    msg["Message-ID"] = make_msgid(domain=domain)
 
     if text_body:
         msg.attach(MIMEText(text_body, "plain", "utf-8"))
