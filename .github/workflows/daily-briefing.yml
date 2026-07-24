@@ -1,13 +1,11 @@
 name: 아침 증시 브리핑
 
-# 매일 아침 06:00 KST 목표 실행.
-# GitHub Actions cron 은 UTC 기준 → 06:00 KST = 21:00 UTC (전일).
-# 평일(월~금 KST) 발송 = UTC 로는 일~목(0-4) 21:00.
-# ※ GitHub 무료 스케줄러는 부하 시 수십 분~1시간가량 지연될 수 있어,
-#   07:00 목표보다 앞당겨 지연을 흡수한다.
+# 비용 문제로 자동 스케줄 비활성화 (2026-07-24).
+# 필요하면 Actions 탭에서 수동 실행(workflow_dispatch)은 계속 가능.
+# 재활성화하려면 아래 schedule 블록의 주석을 해제할 것:
+#   schedule:
+#     - cron: "0 21 * * 0-4"   # 매일 아침 06:00 KST (UTC 21:00 전일, 평일 월~금)
 on:
-  schedule:
-    - cron: "0 21 * * 0-4"
   workflow_dispatch:        # 수동 실행 버튼
 
 jobs:
